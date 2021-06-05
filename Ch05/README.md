@@ -4,7 +4,7 @@ R在行為科學之應用:第五章
 2020 八月 26
 
 ``` r
-if (!require("pacman")) install.packages("pacman")
+if (!require("pacman")) install.packages("pacman", repos="cloud-r.project.org")
 pacman::p_load(mlmRev, gridExtra, tidyverse, coda, reshape,lme4)
 ```
 
