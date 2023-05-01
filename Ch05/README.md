@@ -224,7 +224,7 @@ library(gridExtra)
 grid.arrange(p6, p5, p4, p3, p2, p1, as.table = T)
 ```
 
-<img src="Ch05_files/figure-gfm/fig5.1-1.png" style="display: block; margin: auto;" />
+<img src="ch05_files/figure-gfm/fig5.1-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #看看化學與總成績相關，以學生層次分數計算是 .662
@@ -263,7 +263,7 @@ abline(lm(dta_m[,3] ~ dta_m[,2]), col = 'grey')
 abline(0, 1, lty = 3, col = 'blue')
 ```
 
-<img src="Ch05_files/figure-gfm/fig5.2-1.png" style="display: block; margin: auto;" />
+<img src="ch05_files/figure-gfm/fig5.2-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #看看各校與各區域以化學預測總分時的截距與斜率
@@ -287,7 +287,7 @@ ggplot(data = dta, aes(x = 化學, y = 總成績, group = 學校))+
  labs(x = '化學分數', y = '總成績', title = '學校')
 ```
 
-<img src="Ch05_files/figure-gfm/fig5.3-1.png" style="display: block; margin: auto;" />
+<img src="ch05_files/figure-gfm/fig5.3-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #各區域以化學預測總分時的截距與斜率
@@ -300,7 +300,7 @@ ggplot(data = dta, aes(x = 化學, y = 總成績, group = 區域)) +
  labs(x = '化學分數', y = '總成績' , title = '區域') 
 ```
 
-<img src="Ch05_files/figure-gfm/fig5.4-1.png" style="display: block; margin: auto;" />
+<img src="ch05_files/figure-gfm/fig5.4-1.png" style="display: block; margin: auto;" />
 
 ``` r
 # 將變項以總分均置中，亦即，減去總平均。
@@ -327,7 +327,7 @@ dta |> dplyr::filter(學校 %in% ns25) |>
    facet_wrap( ~ 學校 )
 ```
 
-<img src="Ch05_files/figure-gfm/fig5.5-1.png" style="display: block; margin: auto;" />
+<img src="ch05_files/figure-gfm/fig5.5-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #重看一次各區域以化學預測總分時的截距與斜率
@@ -340,7 +340,7 @@ dta |> dplyr::filter(區域 %in% nr25) |>
    facet_wrap( ~ 區域 )
 ```
 
-<img src="Ch05_files/figure-gfm/fig5.6-1.png" style="display: block; margin: auto;" />
+<img src="ch05_files/figure-gfm/fig5.6-1.png" style="display: block; margin: auto;" />
 
 ### 多層次分析
 
@@ -459,7 +459,7 @@ library(coefplot2)
 coefplot2(m0)
 ```
 
-<img src="Ch05_files/figure-gfm/unnamed-chunk-106-1.png" style="display: block; margin: auto;" />
+<img src="ch05_files/figure-gfm/unnamed-chunk-106-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #抽取變異成分，計算學校與區域可以解釋部分（ICCs）
@@ -526,7 +526,7 @@ library(gridExtra)
 grid.arrange(qq_r21, qq_r22, qq_r0, r_m0, nrow = 2, ncol = 2)
 ```
 
-<img src="Ch05_files/figure-gfm/fig5.7-1.png" style="display: block; margin: auto;" />
+<img src="ch05_files/figure-gfm/fig5.7-1.png" style="display: block; margin: auto;" />
 
 ### 複雜的多層次模型
 
