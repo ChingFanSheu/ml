@@ -1,11 +1,14 @@
 R在行為科學之應用:第五章
 ================
 鄭中平、許清芳
-2020 八月 26
+2023 5月 01
 
 ``` r
-if (!require("pacman")) install.packages("pacman", repos="cloud-r.project.org")
-pacman::p_load(mlmRev, gridExtra, tidyverse, coda, reshape,lme4)
+if(!require("pacman")){
+  install.packages("pacman", repos="https://cloud.r-project.org/")  
+  library(pacman)
+}
+pacman::p_load(mlmRev, printr, gridExtra, tidyverse, optimx, lme4)
 ```
 
 ### 資料管理
@@ -25,9 +28,66 @@ data(Chem97)
 ?Chem97
 ```
 
+    Scores on A-level Chemistry in 1997
+
+    Description:
+
+         Scores on the 1997 A-level Chemistry examination in Britain.
+         Students are grouped into schools within local education
+         authories.  In addition some demographic and pre-test information
+         is provided.
+
+    Usage:
+
+         data(Chem97)
+         
+    Format:
+
+         A data frame with 31022 observations on the following 8 variables.
+
+         lea Local Education Authority - a factor
+
+         school School identifier - a factor
+
+         student Student identifier - a factor
+
+         score Point score on A-level Chemistry in 1997
+
+         gender Student's gender
+
+         age Age in month, centred at 222 months or 18.5 years
+
+         gcsescore Average GCSE score of individual.
+
+         gcsecnt Average GCSE score of individual, centered at mean.
+
+    Details:
+
+         This data set is relatively large with 31,022 individuals in 2,280
+         schools.  Note that while this is used, illustratively, to fit
+         Normal response models, the distribution of the response is not
+         well described by a Normal distribution.
+
+    Source:
+
+         <http://www.bristol.ac.uk/cmm/learning/mmsoftware/data-rev.html>
+
+    References:
+
+         Yang, M., Fielding, A. and Goldstein, H. (2002). Multilevel
+         ordinal models for examination grades (submitted to _Statistical
+         Modelling_).
+
+    Examples:
+
+         str(Chem97)
+         summary(Chem97)
+         (fm1 <- lmer(score ~ (1|school) + (1|lea), Chem97))
+         (fm2 <- lmer(score ~ gcsecnt + (1|school) + (1|lea), Chem97))
+
 ``` r
 #看資料結構
-str(Chem97)
+Chem97 |> str()
 ```
 
     'data.frame':   31022 obs. of  8 variables:
@@ -42,18 +102,17 @@ str(Chem97)
 
 ``` r
 #程式報表5.1
-head(Chem97)
+Chem97 |> head()
 ```
 
-``` 
-  lea school student score gender age gcsescore gcsecnt
-1   1      1       1     4      F   3     6.625  0.3393
-2   1      1       2    10      F  -3     7.625  1.3393
-3   1      1       3    10      F  -4     7.250  0.9643
-4   1      1       4    10      F  -2     7.500  1.2143
-5   1      1       5     8      F  -1     6.444  0.1583
-6   1      1       6    10      F   4     7.750  1.4643
-```
+| lea | school | student | score | gender | age | gcsescore | gcsecnt |
+|:----|:-------|:--------|------:|:-------|----:|----------:|--------:|
+| 1   | 1      | 1       |     4 | F      |   3 |     6.625 |  0.3393 |
+| 1   | 1      | 2       |    10 | F      |  -3 |     7.625 |  1.3393 |
+| 1   | 1      | 3       |    10 | F      |  -4 |     7.250 |  0.9643 |
+| 1   | 1      | 4       |    10 | F      |  -2 |     7.500 |  1.2143 |
+| 1   | 1      | 5       |     8 | F      |  -1 |     6.444 |  0.1583 |
+| 1   | 1      | 6       |    10 | F      |   4 |     7.750 |  1.4643 |
 
 ``` r
 #去掉第六與第八個變項，只將需要的資料留下，並重新命名
@@ -64,44 +123,40 @@ names(dta) <- c("區域", "學校", "學生", "化學", "性別", "總成績")
 
 ``` r
 #程式報表5.1
-head(dta)
+dta |> head()
 ```
 
-``` 
-  區域 學校 學生 化學 性別 總成績
-1    1    1    1    4    F  6.625
-2    1    1    2   10    F  7.625
-3    1    1    3   10    F  7.250
-4    1    1    4   10    F  7.500
-5    1    1    5    8    F  6.444
-6    1    1    6   10    F  7.750
-```
+| 區域 | 學校 | 學生 | 化學 | 性別 | 總成績 |
+|:-----|:-----|:-----|-----:|:-----|-------:|
+| 1    | 1    | 1    |    4 | F    |  6.625 |
+| 1    | 1    | 2    |   10 | F    |  7.625 |
+| 1    | 1    | 3    |   10 | F    |  7.250 |
+| 1    | 1    | 4    |   10 | F    |  7.500 |
+| 1    | 1    | 5    |    8 | F    |  6.444 |
+| 1    | 1    | 6    |   10 | F    |  7.750 |
 
 ### 描述統計
 
 ``` r
 #程式報表5.2
-sapply(dta[, c('化學', '總成績')], summary)
+dta |> dplyr::select('化學', '總成績') |> sapply(summary)
 ```
 
-``` 
-          化學 總成績
-Min.     0.000  0.000
-1st Qu.  4.000  5.750
-Median   6.000  6.375
-Mean     5.813  6.286
-3rd Qu.  8.000  6.900
-Max.    10.000  8.000
-```
+|         |   化學 | 總成績 |
+|:--------|-------:|-------:|
+| Min.    |  0.000 |  0.000 |
+| 1st Qu. |  4.000 |  5.750 |
+| Median  |  6.000 |  6.375 |
+| Mean    |  5.813 |  6.286 |
+| 3rd Qu. |  8.000 |  6.900 |
+| Max.    | 10.000 |  8.000 |
 
 ``` r
-sapply(dta[, c('化學', '總成績')], sd)
+dta |> dplyr::select('化學', '總成績') |> sapply(sd)
 ```
 
-``` 
-  化學 總成績 
-3.3192 0.8735 
-```
+      化學 總成績 
+    3.3192 0.8735 
 
 ``` r
 #計算各校化學與總成績平均分數，記錄成資料檔，留待後用
@@ -112,18 +167,17 @@ names(dta_m) <- c('學校', '化學平均', '總成績平均', '女性比率')
 
 ``` r
 #程式報表5.3
-head(dta_m)
+dta_m |> head()
 ```
 
-``` 
-  學校 化學平均 總成績平均 女性比率
-1    1    8.308      7.224   1.0000
-2    2    8.714      7.024   0.0000
-3    3    4.667      5.310   0.6667
-4    4    8.286      6.232   0.1429
-5    5    5.500      6.174   0.4375
-6    6    4.714      6.705   0.7857
-```
+| 學校 | 化學平均 | 總成績平均 | 女性比率 |
+|:-----|---------:|-----------:|---------:|
+| 1    |    8.308 |      7.224 |   1.0000 |
+| 2    |    8.714 |      7.024 |   0.0000 |
+| 3    |    4.667 |      5.310 |   0.6667 |
+| 4    |    8.286 |      6.232 |   0.1429 |
+| 5    |    5.500 |      6.174 |   0.4375 |
+| 6    |    4.714 |      6.705 |   0.7857 |
 
 ### 繪圖
 
@@ -170,37 +224,34 @@ library(gridExtra)
 grid.arrange(p6, p5, p4, p3, p2, p1, as.table = T)
 ```
 
-<img src="ch05_files/figure-gfm/fig5.1-1.png" style="display: block; margin: auto;" />
+<img src="Ch05_files/figure-gfm/fig5.1-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #看看化學與總成績相關，以學生層次分數計算是 .662
-cor(dta[, c('化學', '總成績')])
+dta |> dplyr::select('化學', '總成績') |> cor()
 ```
 
-``` 
-         化學 總成績
-化學   1.0000 0.6622
-總成績 0.6622 1.0000
-```
+|        |   化學 | 總成績 |
+|:-------|-------:|-------:|
+| 化學   | 1.0000 | 0.6622 |
+| 總成績 | 0.6622 | 1.0000 |
 
 ``` r
 #以學校層次分數計算生態相關（ecological correlation），為 .698
 ##程式報表5.4
-cor(dta_m[, -1])
+dta_m |> dplyr::select(-c('學校')) |> cor() 
 ```
 
-``` 
-           化學平均 總成績平均 女性比率
-化學平均    1.00000     0.6981  0.06625
-總成績平均  0.69807     1.0000  0.24521
-女性比率    0.06625     0.2452  1.00000
-```
+|            | 化學平均 | 總成績平均 | 女性比率 |
+|:-----------|---------:|-----------:|---------:|
+| 化學平均   |   1.0000 |     0.6981 |   0.0663 |
+| 總成績平均 |   0.6981 |     1.0000 |   0.2452 |
+| 女性比率   |   0.0663 |     0.2452 |   1.0000 |
 
 ``` r
 #畫看兩者間關聯
 #圖5.2
-plot(dta[, 4], dta[, 6], type = 'n', xlab ='化學分數', ylab = '總成績', 
-     asp = 1)
+plot(dta[, 4], dta[, 6], type = 'n', xlab ='化學分數', ylab = '總成績', asp = 1)
 grid()
 #學生
 points(dta[, 4], dta[, 6], pch = '.', cex = 2)
@@ -212,7 +263,7 @@ abline(lm(dta_m[,3] ~ dta_m[,2]), col = 'grey')
 abline(0, 1, lty = 3, col = 'blue')
 ```
 
-<img src="ch05_files/figure-gfm/fig5.2-1.png" style="display: block; margin: auto;" />
+<img src="Ch05_files/figure-gfm/fig5.2-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #看看各校與各區域以化學預測總分時的截距與斜率
@@ -223,7 +274,7 @@ library(ggplot2)
 
 ``` r
 # 記錄下原始配色
-old <- theme_set(theme_bw())
+#old <- theme_set(theme_bw())
 ```
 
 ``` r
@@ -232,58 +283,64 @@ old <- theme_set(theme_bw())
 ggplot(data = dta, aes(x = 化學, y = 總成績, group = 學校))+
  stat_smooth(method = 'lm', formula = y ~ x, se = F, color = 'lightgray') +
  geom_point(size = 1) +
- stat_smooth(aes(group = 1), method= 'lm', se = F, color = 'black') +
+ stat_smooth(aes(group = 1), method= 'lm', formula = y ~ x, se = F, color = 'black') +
  labs(x = '化學分數', y = '總成績', title = '學校')
 ```
 
-<img src="ch05_files/figure-gfm/fig5.3-1.png" style="display: block; margin: auto;" />
+<img src="Ch05_files/figure-gfm/fig5.3-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #各區域以化學預測總分時的截距與斜率
 #圖5.4
-ggplot(data = dta, aes(x = 化學, y = 總成績, group = 區域))+
+ggplot(data = dta, aes(x = 化學, y = 總成績, group = 區域)) +
  stat_smooth(method = 'lm', formula = y ~ x, se = F, color = 'lightgray') +
  geom_point(size = 1) +
- stat_smooth(aes(group = 1), method = 'lm', se = F, color = 'black') +
+ stat_smooth(aes(group = 1), method = 'lm', formula = y ~ x, se = F, 
+             color = 'black') +
  labs(x = '化學分數', y = '總成績' , title = '區域') 
 ```
 
-<img src="ch05_files/figure-gfm/fig5.4-1.png" style="display: block; margin: auto;" />
+<img src="Ch05_files/figure-gfm/fig5.4-1.png" style="display: block; margin: auto;" />
 
 ``` r
 # 將變項以總分均置中，亦即，減去總平均。
-dta$化學置中 <- scale(dta$化學, scale = F)
+dta <- dta |>
+  dplyr::mutate(化學置中 = scale(化學, scale = F))
 ```
 
 ``` r
 #選取25個學校與區域 
 set.seed(1225)
-ns25 <- sample(levels(dta$學校), 25)
+ns25 <- with(dta, levels(學校)) |> sample(25) 
 set.seed(1225)
-nr25 <- sample(levels(dta$區域), 25)
+nr25 <- with(dta, levels(區域)) |> sample(25)
 ```
 
 ``` r
 #重看一次各校以化學預測總分時的截距與斜率
 #圖5.5
-ggplot(data = dta[dta$學校 %in% ns25, ], aes(x = 化學置中, y = 總成績, color = 性別))+
-  geom_point(size = 1) +
-  stat_smooth(method = 'lm', formula = y ~ x, se = F) +
-  facet_wrap( ~ 學校 )
+dta |> dplyr::filter(學校 %in% ns25) |>
+ ggplot() + 
+   aes(x = 化學置中, y = 總成績, color = 性別) +
+   geom_point(size = 1) +
+   stat_smooth(method = 'lm', formula = y ~ x, se = F) +
+   facet_wrap( ~ 學校 )
 ```
 
-<img src="ch05_files/figure-gfm/fig5.5-1.png" style="display: block; margin: auto;" />
+<img src="Ch05_files/figure-gfm/fig5.5-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #重看一次各區域以化學預測總分時的截距與斜率
 #圖5.6
-ggplot(data = dta[dta$區域 %in% nr25, ], aes(x = 化學置中, y = 總成績, color = 性別))+
-  geom_point(size = 1) +
-  stat_smooth(method = 'lm', formula = y ~ x, se = F) +
-  facet_wrap( ~ 區域 )
+dta |> dplyr::filter(區域 %in% nr25) |>
+ ggplot() + 
+   aes(x = 化學置中, y = 總成績, color = 性別) +
+   geom_point(size = 1) +
+   stat_smooth(method = 'lm', formula = y ~ x, se = F) +
+   facet_wrap( ~ 區域 )
 ```
 
-<img src="ch05_files/figure-gfm/fig5.6-1.png" style="display: block; margin: auto;" />
+<img src="Ch05_files/figure-gfm/fig5.6-1.png" style="display: block; margin: auto;" />
 
 ### 多層次分析
 
@@ -293,42 +350,38 @@ library(lme4)
 ```
 
 ``` r
-# 將變項以總分均置中，亦即，減去總平均。
-dta$化學置中 <- scale(dta$化學, scale = F)
-```
-
-``` r
 #先以完整模型嘗試
 #程式報表5.5
-summary(m0 <- lmer(總成績 ~ 化學置中 + 性別 + 化學置中:性別 + 
-                  ( 1 | 學校 ) + ( 1 | 區域 ), data = dta ) )       
+m0 <- lme4::lmer(總成績 ~ 化學置中 + 性別 + 化學置中:性別 + 
+                 ( 1 | 學校 ) + ( 1 | 區域 ), data = dta )
+m0 |> summary()
 ```
 
     Linear mixed model fit by REML ['lmerMod']
-    Formula: 總成績 ~ 化學置中 + 性別 + 化學置中:性別 + (1 | 學校) + (1 |  
-        區域)
+    Formula: 總成績 ~ 化學置中 + 性別 + 化學置中:性別 + (1 |  
+        學校) + (1 | 區域)
        Data: dta
-    
+
     REML criterion at convergence: 55708
-    
+
     Scaled residuals: 
        Min     1Q Median     3Q    Max 
     -9.231 -0.567  0.064  0.653  4.079 
-    
+
     Random effects:
      Groups   Name        Variance Std.Dev.
      學校     (Intercept) 0.0876   0.296   
      區域     (Intercept) 0.0106   0.103   
      Residual             0.3181   0.564   
     Number of obs: 31022, groups:  學校, 2410; 區域, 131
-    
+
     Fixed effects:
                    Estimate Std. Error t value
     (Intercept)     6.08025    0.01326  458.43
     化學置中        0.16808    0.00141  119.33
     性別F           0.33409    0.00752   44.44
     化學置中:性別F -0.01227    0.00209   -5.87
-    
+
     Correlation of Fixed Effects:
                    (Intr) 化學置中 性別F 
     化學置中        0.051                
@@ -345,14 +398,10 @@ m1 <- update(m0, . ~ . - ( 1 | 區域 ) )
 anova(m0, m1)
 ```
 
-    Data: dta
-    Models:
-    m1: 總成績 ~ 化學置中 + 性別 + (1 | 學校) + 化學置中:性別
-    m0: 總成績 ~ 化學置中 + 性別 + 化學置中:性別 + (1 | 學校) + (1 | 
-    m0:     區域)
-       npar   AIC   BIC logLik deviance Chisq Df Pr(>Chisq)
-    m1    6 55743 55793 -27866    55731                    
-    m0    7 55685 55744 -27836    55671  59.7  1    1.1e-14
+|     | npar |   AIC |   BIC | logLik | deviance | Chisq |  Df | Pr(\>Chisq) |
+|:----|-----:|------:|------:|-------:|---------:|------:|----:|------------:|
+| m1  |    6 | 55743 | 55793 | -27866 |    55731 |    NA |  NA |          NA |
+| m0  |    7 | 55685 | 55744 | -27836 |    55671 | 59.74 |   1 |           0 |
 
 ``` r
 #去除交互作用項
@@ -360,44 +409,40 @@ anova(m0, m1)
 drop1(m0, test = 'Chisq')
 ```
 
-    Single term deletions
-    
-    Model:
-    總成績 ~ 化學置中 + 性別 + 化學置中:性別 + (1 | 學校) + (1 | 
-        區域)
-                  npar   AIC  LRT Pr(Chi)
-    <none>             55685             
-    化學置中:性別    1 55718 34.4 4.5e-09
+|               | npar |   AIC |   LRT | Pr(Chi) |
+|:--------------|-----:|------:|------:|--------:|
+| <none>        |   NA | 55685 |    NA |      NA |
+| 化學置中:性別 |    1 | 55718 | 34.39 |       0 |
 
 ``` r
-summary(m0)
+m0 |> summary()
 ```
 
     Linear mixed model fit by REML ['lmerMod']
-    Formula: 總成績 ~ 化學置中 + 性別 + 化學置中:性別 + (1 | 學校) + (1 |  
-        區域)
+    Formula: 總成績 ~ 化學置中 + 性別 + 化學置中:性別 + (1 |  
+        學校) + (1 | 區域)
        Data: dta
-    
+
     REML criterion at convergence: 55708
-    
+
     Scaled residuals: 
        Min     1Q Median     3Q    Max 
     -9.231 -0.567  0.064  0.653  4.079 
-    
+
     Random effects:
      Groups   Name        Variance Std.Dev.
      學校     (Intercept) 0.0876   0.296   
      區域     (Intercept) 0.0106   0.103   
      Residual             0.3181   0.564   
     Number of obs: 31022, groups:  學校, 2410; 區域, 131
-    
+
     Fixed effects:
                    Estimate Std. Error t value
     (Intercept)     6.08025    0.01326  458.43
     化學置中        0.16808    0.00141  119.33
     性別F           0.33409    0.00752   44.44
     化學置中:性別F -0.01227    0.00209   -5.87
-    
+
     Correlation of Fixed Effects:
                    (Intr) 化學置中 性別F 
     化學置中        0.051                
@@ -414,19 +459,17 @@ library(coefplot2)
 coefplot2(m0)
 ```
 
-<img src="ch05_files/figure-gfm/unnamed-chunk-30-1.png" style="display: block; margin: auto;" />
+<img src="Ch05_files/figure-gfm/unnamed-chunk-106-1.png" style="display: block; margin: auto;" />
 
 ``` r
 #抽取變異成分，計算學校與區域可以解釋部分（ICCs）
 print(vc <- lme4::VarCorr(m0), comp = 'Variance' )
 ```
 
-``` 
- Groups   Name        Variance
- 學校     (Intercept) 0.0876  
- 區域     (Intercept) 0.0106  
- Residual             0.3181  
-```
+     Groups   Name        Variance
+     學校     (Intercept) 0.0876  
+     區域     (Intercept) 0.0106  
+     Residual             0.3181  
 
 ``` r
 vc <- as.data.frame(vc)
@@ -483,7 +526,7 @@ library(gridExtra)
 grid.arrange(qq_r21, qq_r22, qq_r0, r_m0, nrow = 2, ncol = 2)
 ```
 
-<img src="ch05_files/figure-gfm/fig5.7-1.png" style="display: block; margin: auto;" />
+<img src="Ch05_files/figure-gfm/fig5.7-1.png" style="display: block; margin: auto;" />
 
 ### 複雜的多層次模型
 
@@ -494,50 +537,97 @@ dta <- merge(dta, dta_m, by="學校")
 ```
 
 ``` r
-rslt <- lmer(總成績 ~ 化學置中 + 性別 + 化學置中:性別 +
-        女性比率 + 女性比率:性別+
-        (1+化學置中+性別|學校) + (1|區域), data=dta)
-summary(rslt)
+rslt <- lmer(總成績 ~ 化學置中 + 性別 + 化學置中:性別 + 女性比率 + 女性比率:性別+
+              (化學置中  + 性別 | 學校) + (1 | 區域), data=dta)
+rslt |> summary()
 ```
 
     Linear mixed model fit by REML ['lmerMod']
-    Formula: 總成績 ~ 化學置中 + 性別 + 化學置中:性別 + 女性比率 + 女性比率:性別 +  
-        (1 + 化學置中 + 性別 | 學校) + (1 | 區域)
+    Formula: 總成績 ~ 化學置中 + 性別 + 化學置中:性別 + 女性比率 +  
+        女性比率:性別 + (化學置中 + 性別 | 學校) +      (1 | 區域)
        Data: dta
-    
+
     REML criterion at convergence: 55393
-    
+
     Scaled residuals: 
        Min     1Q Median     3Q    Max 
-    -9.347 -0.561  0.068  0.650  4.123 
-    
+    -9.350 -0.561  0.068  0.650  4.123 
+
     Random effects:
      Groups   Name        Variance Std.Dev. Corr       
-     學校     (Intercept) 0.098252 0.3135              
+     學校     (Intercept) 0.098109 0.3132              
               化學置中    0.000548 0.0234   -0.56      
-              性別F       0.018382 0.1356   -0.63  0.06
-     區域     (Intercept) 0.010583 0.1029              
-     Residual             0.310352 0.5571              
+              性別F       0.018070 0.1344   -0.63  0.07
+     區域     (Intercept) 0.010623 0.1031              
+     Residual             0.310395 0.5571              
     Number of obs: 31022, groups:  學校, 2410; 區域, 131
-    
+
     Fixed effects:
                    Estimate Std. Error t value
-    (Intercept)     6.14024    0.01925  318.96
-    化學置中        0.16985    0.00156  109.10
-    性別F           0.14634    0.02227    6.57
-    女性比率       -0.22291    0.04005   -5.57
-    化學置中:性別F -0.01108    0.00216   -5.14
-    性別F:女性比率  0.43090    0.04827    8.93
-    
+    (Intercept)     6.14025    0.01925  318.97
+    化學置中        0.16986    0.00156  109.12
+    性別F           0.14631    0.02226    6.57
+    女性比率       -0.22288    0.04002   -5.57
+    化學置中:性別F -0.01110    0.00216   -5.15
+    性別F:女性比率  0.43084    0.04823    8.93
+
     Correlation of Fixed Effects:
-                   (Intr) 化學置中 性別F  女性比率 化中:性別F
-    化學置中       -0.094                                    
-    性別F          -0.483 -0.004                             
-    女性比率       -0.705  0.069    0.645                    
-    化學置中:性別F  0.065 -0.609    0.004 -0.101             
-    性別F:女性比率  0.495 -0.026   -0.915 -0.797    0.029    
-    convergence code: 0
-    Model failed to converge with max|grad| = 0.0745118 (tol = 0.002, component 1)
+                   (Intr) 化學置中 性別F  女性比率 化學置中:性
+    化學置中       -0.095                                     
+    性別F          -0.482 -0.004                              
+    女性比率       -0.705  0.069    0.645                     
+    化學置中:性別F  0.066 -0.609    0.004 -0.102              
+    性別F:女性比率  0.494 -0.026   -0.915 -0.797    0.030     
+    optimizer (nloptwrap) convergence code: 0 (OK)
+    Model failed to converge with max|grad| = 0.002477 (tol = 0.002, component 1)
+
+``` r
+# use a different optimization routine
+library(optimx)
+rslt <- lmer(總成績 ~ 化學置中 + 性別 + 化學置中:性別 + 女性比率 + 女性比率:性別+
+                    (化學置中  + 性別 | 學校) + (1 | 區域), data=dta,
+                    control = lmerControl(optimizer ='optimx',
+                                          optCtrl=list(method='nlminb')))
+rslt |> summary()
+```
+
+    Linear mixed model fit by REML ['lmerMod']
+    Formula: 總成績 ~ 化學置中 + 性別 + 化學置中:性別 + 女性比率 +  
+        女性比率:性別 + (化學置中 + 性別 | 學校) +      (1 | 區域)
+       Data: dta
+    Control: lmerControl(optimizer = "optimx", optCtrl = list(method = "nlminb"))
+
+    REML criterion at convergence: 55393
+
+    Scaled residuals: 
+       Min     1Q Median     3Q    Max 
+    -9.350 -0.561  0.068  0.650  4.123 
+
+    Random effects:
+     Groups   Name        Variance Std.Dev. Corr       
+     學校     (Intercept) 0.098114 0.3132              
+              化學置中    0.000548 0.0234   -0.56      
+              性別F       0.018077 0.1345   -0.63  0.07
+     區域     (Intercept) 0.010619 0.1030              
+     Residual             0.310394 0.5571              
+    Number of obs: 31022, groups:  學校, 2410; 區域, 131
+
+    Fixed effects:
+                   Estimate Std. Error t value
+    (Intercept)     6.14025    0.01925  318.98
+    化學置中        0.16986    0.00156  109.11
+    性別F           0.14632    0.02226    6.57
+    女性比率       -0.22288    0.04002   -5.57
+    化學置中:性別F -0.01110    0.00216   -5.15
+    性別F:女性比率  0.43084    0.04823    8.93
+
+    Correlation of Fixed Effects:
+                   (Intr) 化學置中 性別F  女性比率 化學置中:性
+    化學置中       -0.095                                     
+    性別F          -0.482 -0.004                              
+    女性比率       -0.705  0.069    0.645                     
+    化學置中:性別F  0.066 -0.609    0.004 -0.102              
+    性別F:女性比率  0.494 -0.026   -0.915 -0.797    0.030     
 
 ### 結束
 
@@ -547,45 +637,46 @@ summary(rslt)
 sessionInfo()
 ```
 
-``` 
-R version 4.0.2 (2020-06-22)
-Platform: x86_64-w64-mingw32/x64 (64-bit)
-Running under: Windows 10 x64 (build 18363)
+    R version 4.2.3 (2023-03-15)
+    Platform: aarch64-apple-darwin20 (64-bit)
+    Running under: macOS Ventura 13.3.1
 
-Matrix products: default
+    Matrix products: default
+    LAPACK: /Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/lib/libRlapack.dylib
 
-locale:
-[1] LC_COLLATE=Chinese (Traditional)_Taiwan.950 
-[2] LC_CTYPE=Chinese (Traditional)_Taiwan.950   
-[3] LC_MONETARY=Chinese (Traditional)_Taiwan.950
-[4] LC_NUMERIC=C                                
-[5] LC_TIME=Chinese (Traditional)_Taiwan.950    
+    locale:
+    [1] zh_TW.UTF-8/zh_TW.UTF-8/zh_TW.UTF-8/C/zh_TW.UTF-8/zh_TW.UTF-8
 
-attached base packages:
-[1] stats     graphics  grDevices utils     datasets  methods   base     
+    attached base packages:
+    [1] stats     graphics  grDevices utils     datasets  methods   base     
 
-other attached packages:
- [1] coefplot2_0.1.3.2 lattice_0.20-41   reshape_0.8.8     coda_0.19-3      
- [5] forcats_0.5.0     stringr_1.4.0     dplyr_1.0.0       purrr_0.3.4      
- [9] readr_1.3.1       tidyr_1.1.0       tibble_3.0.3      ggplot2_3.3.2    
-[13] tidyverse_1.3.0   gridExtra_2.3     mlmRev_1.0-8      lme4_1.1-23      
-[17] Matrix_1.2-18     pacman_0.5.1     
+    other attached packages:
+     [1] optimx_2022-4.30  coefplot2_0.1.3.2 lattice_0.21-8    reshape_0.8.9    
+     [5] coda_0.19-4       lubridate_1.9.2   forcats_1.0.0     stringr_1.5.0    
+     [9] dplyr_1.1.1       purrr_1.0.1       readr_2.1.4       tidyr_1.3.0      
+    [13] tibble_3.2.1      ggplot2_3.4.2     tidyverse_2.0.0   gridExtra_2.3    
+    [17] printr_0.3        mlmRev_1.0-8      lme4_1.1-32       Matrix_1.5-4     
+    [21] pacman_0.5.1     
 
-loaded via a namespace (and not attached):
- [1] Rcpp_1.0.4.6     lubridate_1.7.9  assertthat_0.2.1 digest_0.6.25   
- [5] plyr_1.8.6       R6_2.4.1         cellranger_1.1.0 backports_1.1.6 
- [9] reprex_0.3.0     evaluate_0.14    httr_1.4.1       pillar_1.4.3    
-[13] rlang_0.4.7      readxl_1.3.1     minqa_1.2.4      rstudioapi_0.11 
-[17] nloptr_1.2.2.1   blob_1.2.1       rmarkdown_2.3    labeling_0.3    
-[21] splines_4.0.2    statmod_1.4.34   munsell_0.5.0    broom_0.7.0     
-[25] compiler_4.0.2   modelr_0.1.8     xfun_0.15        pkgconfig_2.0.3 
-[29] mgcv_1.8-31      htmltools_0.5.0  tidyselect_1.1.0 fansi_0.4.1     
-[33] withr_2.2.0      crayon_1.3.4     dbplyr_1.4.4     MASS_7.3-51.6   
-[37] grid_4.0.2       nlme_3.1-148     jsonlite_1.7.0   gtable_0.3.0    
-[41] lifecycle_0.2.0  DBI_1.1.0        magrittr_1.5     scales_1.1.1    
-[45] cli_2.0.2        stringi_1.4.6    farver_2.0.3     fs_1.4.1        
-[49] xml2_1.3.2       ellipsis_0.3.0   generics_0.0.2   vctrs_0.3.1     
-[53] boot_1.3-25      tools_4.0.2      glue_1.4.0       hms_0.5.3       
-[57] yaml_2.2.1       colorspace_1.4-1 rvest_0.3.5      knitr_1.29      
-[61] haven_2.3.1     
-```
+    loaded via a namespace (and not attached):
+     [1] jsonlite_1.8.4       splines_4.2.3        highr_0.9           
+     [4] cellranger_1.1.0     yaml_2.3.7           numDeriv_2016.8-1.1 
+     [7] pillar_1.8.1         glue_1.6.2           digest_0.6.30       
+    [10] RColorBrewer_1.1-3   minqa_1.2.5          colorspace_2.0-3    
+    [13] htmltools_0.5.4      plyr_1.8.8           pkgconfig_2.0.3     
+    [16] DiagrammeR_1.0.9     scales_1.2.1         tzdb_0.3.0          
+    [19] timechange_0.2.0     mgcv_1.8-42          generics_0.1.3      
+    [22] farver_2.1.1         ellipsis_0.3.2       gtsummary_1.7.0     
+    [25] withr_2.5.0          cli_3.6.0            magrittr_2.0.3      
+    [28] readxl_1.4.2         evaluate_0.18        fansi_1.0.3         
+    [31] broom.helpers_1.12.0 nlme_3.1-162         MASS_7.3-58.3       
+    [34] textshaping_0.3.6    rsconnect_0.8.27     tools_4.2.3         
+    [37] hms_1.1.2            lifecycle_1.0.3      munsell_0.5.0       
+    [40] compiler_4.2.3       systemfonts_1.0.4    rlang_1.1.0         
+    [43] grid_4.2.3           nloptr_2.0.3         gt_0.8.0            
+    [46] rstudioapi_0.14      htmlwidgets_1.5.4    visNetwork_2.1.0    
+    [49] labeling_0.4.2       rmarkdown_2.21       boot_1.3-28.1       
+    [52] gtable_0.3.1         R6_2.5.1             knitr_1.42          
+    [55] fastmap_1.1.0        utf8_1.2.3           ragg_1.2.5          
+    [58] stringi_1.7.12       Rcpp_1.0.10          vctrs_0.6.1         
+    [61] tidyselect_1.2.0     xfun_0.38           
